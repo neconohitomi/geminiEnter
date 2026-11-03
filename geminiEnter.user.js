@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gemini: Enter for newline, Cmd+Enter to send
 // @namespace    local
-// @version      2.0
+// @version      2.0.1
 // @description  Enter inserts a newline; Command+Enter sends the prompt.
 // @match        https://gemini.google.com/*
 // @match        https://www.google.com/search*
@@ -14,58 +14,58 @@
 (() => {
   "use strict";
 
-  const handleKey = (event) => {
-    // 1. スクリプトが生成した「偽装Enter」はここでスルーし、Gemini本体に処理させる
-    if (!event.isTrusted) return;
+  function isAiMode() {
+    // Google AI モードのURL判定
+    return location.pathname.startsWith("/ai") ||
+      new URLSearchParams(location.search).get("udm") === "50";
+  }
 
-    // 2. 変換中や、Enter以外のキーは無視
+  document.addEventListener("keydown", (event) => {
     if (event.isComposing || event.key !== "Enter") return;
 
-    // 3. 入力エリアにいる時のみ作動
-    const editor = event.target.closest('rich-textarea, [contenteditable="true"], textarea');
+    const editor = event.target.closest(
+      '[contenteditable="true"], textarea'
+    );
     if (!editor) return;
 
-    // 【パターンA】普通の Enter → 改行（大成功している理想の挙動）
-    if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
+    const isGemini = location.hostname === "gemini.google.com";
+    const isGoogleAiMode =
+      location.hostname.endsWith("google.com") && isAiMode();
 
-      if (event.type === "keydown") {
+    // Gemini と Google AI モード以外ではキー操作を変更しない
+    if (!isGemini && !isGoogleAiMode) return;
+
+    if (!event.metaKey) {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+
+      if (editor instanceof HTMLTextAreaElement) {
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.setRangeText("\n", start, end, "end");
+        editor.dispatchEvent(new InputEvent("input", {
+          bubbles: true,
+          inputType: "insertLineBreak",
+          data: "\n",
+        }));
+      } else {
         document.execCommand("insertLineBreak");
       }
       return;
     }
 
-    // 【パターンB】Cmd + Enter / Ctrl + Enter → 送信
-    if (event.metaKey || event.ctrlKey) {
-      // Cmd+Enterのイベント自体はここで完全に握りつぶす
-      event.preventDefault();
-      event.stopImmediatePropagation();
+    event.stopImmediatePropagation();
+    event.preventDefault();
 
-      if (event.type === "keydown") {
-        // ボタン探しはやめて、「修飾キーなしの純粋なEnterイベント」を生成してエディタに直接投げる
-        // これを受け取ったGemini本体は「通常のEnterが押された」と錯覚して安全に送信処理を行う
-        const plainEnter = new KeyboardEvent("keydown", {
-          key: "Enter",
-          code: "Enter",
-          keyCode: 13,
-          which: 13,
-          shiftKey: false,
-          ctrlKey: false,
-          metaKey: false,
-          altKey: false,
-          bubbles: true,
-          cancelable: true,
-          composed: true
-        });
-        editor.dispatchEvent(plainEnter);
-      }
-      return;
+    const form = editor.closest("form");
+    const sendButton =
+      form?.querySelector('button[type="submit"]') ??
+      document.querySelector(
+        'button[aria-label*="送信"], button[aria-label*="Send"]'
+      );
+
+    if (sendButton && !sendButton.disabled) {
+      sendButton.click();
     }
-  };
-
-  // 画面の最優先でイベントを横取り
-  window.addEventListener("keydown", handleKey, { capture: true, passive: false });
-  window.addEventListener("keyup", handleKey, { capture: true, passive: false });
-  window.addEventListener("keypress", handleKey, { capture: true, passive: false });
+  }, true);
 })();
