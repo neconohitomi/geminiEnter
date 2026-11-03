@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gemini: Enter for newline, Cmd+Enter to send
 // @namespace    local
-// @version      2.0.1
+// @version      2.0.2
 // @description  Enter inserts a newline; Command+Enter sends the prompt.
 // @match        https://gemini.google.com/*
 // @match        https://www.google.com/search*
@@ -30,7 +30,10 @@
 
     const isGemini = location.hostname === "gemini.google.com";
     const isGoogleAiMode =
-      location.hostname.endsWith("google.com") && isAiMode();
+        location.hostname === "www.google.com" &&
+        editor.matches(
+        '[data-xid="aim-mars-input-plate"] textarea[aria-label="質問する"]'
+      );
 
     // Gemini と Google AI モード以外ではキー操作を変更しない
     if (!isGemini && !isGoogleAiMode) return;
