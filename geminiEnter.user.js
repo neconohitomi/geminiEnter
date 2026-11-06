@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gemini: Enter for newline, Cmd+Enter to send
 // @namespace    local
-// @version      2.0.2
+// @version      2.0.3
 // @description  Enter inserts a newline; Command+Enter sends the prompt.
 // @match        https://gemini.google.com/*
 // @match        https://www.google.com/search*
@@ -38,7 +38,8 @@
     // Gemini と Google AI モード以外ではキー操作を変更しない
     if (!isGemini && !isGoogleAiMode) return;
 
-    if (!event.metaKey) {
+  //if (!event.ctrlKey) { // windows
+    if (!event.metaKey) { // Mac
       event.stopImmediatePropagation();
       event.preventDefault();
 
